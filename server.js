@@ -3,6 +3,8 @@ const cors = require("cors");
 const axios = require("axios");
 const app = express();
 const bodyParser = require("body-parser");
+const whois = require('whois');
+
 require("dotenv").config();
 
 app.use(cors({
@@ -122,6 +124,23 @@ app.get("/get-deployed-url", (req, res) => {
 
   res.status(200).json({ deployedUrl: latestDeployedUrl });
 });
+
+
+app.get('/check-domain/:subdomain', async (req, res) => {
+    const { subdomain } = req.params;
+    const domain = `https://${subdomain}.netlify.app`;
+  
+    try {
+      const response = await axios.get(domain);
+      res.status(200).json({ available: false }); // If the request succeeds, domain is not available
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        res.status(200).json({ available: true }); // If 404, domain is available
+      } else {
+        res.status(500).json({ error: 'Error checking domain availability' });
+      }
+    }
+  });
 
 // Start the server
 const PORT = 5001;
