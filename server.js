@@ -142,7 +142,28 @@ app.get('/check-domain/:subdomain', async (req, res) => {
     }
   });
 
-// Start the server
+  let storedSubdomain = ""; // Global variable to store the subdomain
+
+app.post("/store-subdomain", (req, res) => {
+    const { subdomain } = req.body;
+
+    if (!subdomain) {
+        return res.status(400).json({ message: "Subdomain is required" });
+    }
+
+    storedSubdomain = subdomain;
+    res.status(200).json({ message: "Subdomain stored successfully", subdomain });
+});
+app.get("/get-subdomain", (req, res) => {
+  if (!storedSubdomain) {
+      return res.status(404).json({ message: "No subdomain stored" });
+  }
+
+  res.status(200).json({ subdomain: storedSubdomain });
+});
+
+
+  // Start the server
 const PORT = 5001;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
