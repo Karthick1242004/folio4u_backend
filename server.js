@@ -54,16 +54,20 @@ app.post("/create-gist", async (req, res) => {
 });
 
 // API to update Gist URL in the repository
+let storedSubdomain = ""; // Global variable for the subdomain
+
 app.post("/update-gist-url", async (req, res) => {
-    const { gistRawUrl } = req.body;
+    const { gistRawUrl, subdomain } = req.body;
 
-    console.log("Received Gist URL:", gistRawUrl); // Debug log
+    console.log("Received Gist URL:", gistRawUrl);
+    console.log("Received Subdomain:", subdomain); // Debug log
 
-    if (!gistRawUrl) {
-        return res.status(400).json({ message: "Gist URL is required" });
+    if (!gistRawUrl || !subdomain) {
+        return res.status(400).json({ message: "Gist URL and subdomain are required" });
     }
 
     try {
+        // Update the Gist URL in the GitHub repository
         const filePath = "src/hooks/usePortfolioData.ts";
         const { data: fileData } = await axios.get(
             `https://api.github.com/repos/${REPO_OWNER}/${BASE_REPO_NAME}/contents/${filePath}`,
@@ -95,12 +99,16 @@ app.post("/update-gist-url", async (req, res) => {
             }
         );
 
-        res.status(200).json({ message: "Gist URL updated in repository" });
+        // Update the stored subdomain
+        storedSubdomain = subdomain;
+
+        res.status(200).json({ message: "Gist URL and subdomain updated successfully" });
     } catch (error) {
         console.error("GitHub API error:", error.response?.data || error.message);
         res.status(500).json({ message: "Failed to update gist URL in repository", error: error.message });
     }
 });
+
 
 let latestDeployedUrl = ""; // Variable to store the deployed URL
 
@@ -141,8 +149,7 @@ app.get('/check-domain/:subdomain', async (req, res) => {
       }
     }
   });
-
-  let storedSubdomain = ""; // Global variable to store the subdomain
+// Global variable to store the subdomain
 
 app.post("/store-subdomain", (req, res) => {
     const { subdomain } = req.body;
@@ -156,7 +163,7 @@ app.post("/store-subdomain", (req, res) => {
 });
 app.get("/get-subdomain", (req, res) => {
   if (!storedSubdomain) {
-      return res.status(404).json({ message: "No subdomain stored" });
+      return res.status(404).json({ message: "N subdomain stored" });
   }
 
   res.status(200).json({ subdomain: storedSubdomain });
@@ -169,3 +176,7 @@ app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
 
+
+
+
+// https://folio4ubackend-production.up.railway.app/update-gist-url
