@@ -119,20 +119,16 @@ app.post("/capture-deployed-url", (req, res) => {
   if (!deployedUrl) {
     return res.status(400).json({ message: "Deployed URL is required" });
   }
-
   latestDeployedUrl = deployedUrl;
   res.status(200).json({ message: "Deployed URL captured successfully" });
 });
-
 // API to get the latest deployed URL
 app.get("/get-deployed-url", (req, res) => {
   if (!latestDeployedUrl) {
     return res.status(404).json({ message: "No deployed URL available" });
   }
-
   res.status(200).json({ deployedUrl: latestDeployedUrl });
 });
-
 
 app.get('/check-domain/:subdomain', async (req, res) => {
     const { subdomain } = req.params;
@@ -150,7 +146,6 @@ app.get('/check-domain/:subdomain', async (req, res) => {
     }
   });
 // Global variable to store the subdomain
-
 app.post("/store-subdomain", (req, res) => {
     const { subdomain } = req.body;
 
@@ -169,8 +164,6 @@ app.get("/get-subdomain", (req, res) => {
   res.status(200).json({ subdomain: storedSubdomain });
 });
 
-
-  // Start the server
 const PORT = 5001;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
