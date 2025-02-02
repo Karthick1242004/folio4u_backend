@@ -21,6 +21,13 @@ const REPO_OWNER = process.env.REPO_OWNER;
 const BASE_REPO_NAME = process.env.BASE_REPO_NAME;
 const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
+
+// Add these headers near the top with other constants
+const headers = {
+    Authorization: `Bearer ${GITHUB_TOKEN}`,
+    Accept: "application/vnd.github.v3+json",
+};
+
 // API to create a new Gist
 app.post("/create-gist", async (req, res) => {
     const { content } = req.body;
@@ -57,20 +64,23 @@ app.post("/create-gist", async (req, res) => {
 let storedSubdomain = ""; // Global variable for the subdomain
 
 app.post("/update-gist-url", async (req, res) => {
-    const { gistRawUrl, subdomain } = req.body;
+    const { gistRawUrl, subdomain, repoName } = req.body;
 
     console.log("Received Gist URL:", gistRawUrl);
-    console.log("Received Subdomain:", subdomain); // Debug log
+    console.log("Received Subdomain:", subdomain);
+    console.log("Received Repository Name:", repoName);
 
-    if (!gistRawUrl || !subdomain) {
-        return res.status(400).json({ message: "Gist URL and subdomain are required" });
+    if (!gistRawUrl || !subdomain || !repoName) {
+        return res.status(400).json({ 
+            message: "Gist URL, subdomain, and repository name are required" 
+        });
     }
 
     try {
         // Update the Gist URL in the GitHub repository
         const filePath = "src/hooks/usePortfolioData.ts";
         const { data: fileData } = await axios.get(
-            `https://api.github.com/repos/${REPO_OWNER}/${BASE_REPO_NAME}/contents/${filePath}`,
+            `https://api.github.com/repos/${REPO_OWNER}/${repoName}/contents/${filePath}`,
             {
                 headers: {
                     Authorization: `token ${GITHUB_TOKEN}`,
@@ -86,7 +96,7 @@ app.post("/update-gist-url", async (req, res) => {
         const encodedContent = Buffer.from(updatedContent).toString("base64");
 
         await axios.put(
-            `https://api.github.com/repos/${REPO_OWNER}/${BASE_REPO_NAME}/contents/${filePath}`,
+            `https://api.github.com/repos/${REPO_OWNER}/${repoName}/contents/${filePath}`,
             {
                 message: "Updated Gist URL in usePortfolioData.ts",
                 content: encodedContent,
@@ -112,23 +122,23 @@ app.post("/update-gist-url", async (req, res) => {
 
 let latestDeployedUrl = ""; // Variable to store the deployed URL
 
-// API to capture the latest deployed URL
-app.post("/capture-deployed-url", (req, res) => {
-  const { deployedUrl } = req.body;
+// // API to capture the latest deployed URL
+// app.post("/capture-deployed-url", (req, res) => {
+//   const { deployedUrl } = req.body;
 
-  if (!deployedUrl) {
-    return res.status(400).json({ message: "Deployed URL is required" });
-  }
-  latestDeployedUrl = deployedUrl;
-  res.status(200).json({ message: "Deployed URL captured successfully" });
-});
+//   if (!deployedUrl) {
+//     return res.status(400).json({ message: "Deployed URL is required" });
+//   }
+//   latestDeployedUrl = deployedUrl;
+//   res.status(200).json({ message: "Deployed URL captured successfully" });
+// });
 // API to get the latest deployed URL
-app.get("/get-deployed-url", (req, res) => {
-  if (!latestDeployedUrl) {
-    return res.status(404).json({ message: "No deployed URL available" });
-  }
-  res.status(200).json({ deployedUrl: latestDeployedUrl });
-});
+// app.get("/get-deployed-url", (req, res) => {
+//   if (!latestDeployedUrl) {
+//     return res.status(404).json({ message: "No deployed URL available" });
+//   }
+//   res.status(200).json({ deployedUrl: latestDeployedUrl });
+// });
 
 app.get('/check-domain/:subdomain', async (req, res) => {
     const { subdomain } = req.params;
@@ -145,17 +155,7 @@ app.get('/check-domain/:subdomain', async (req, res) => {
       }
     }
   });
-// Global variable to store the subdomain
-app.post("/store-subdomain", (req, res) => {
-    const { subdomain } = req.body;
 
-    if (!subdomain) {
-        return res.status(400).json({ message: "Subdomain is required" });
-    }
-
-    storedSubdomain = subdomain;
-    res.status(200).json({ message: "Subdomain stored successfully", subdomain });
-});
 app.get("/get-subdomain", (req, res) => {
   if (!storedSubdomain) {
       return res.status(404).json({ message: "N subdomain stored" });
@@ -163,6 +163,7 @@ app.get("/get-subdomain", (req, res) => {
 
   res.status(200).json({ subdomain: storedSubdomain });
 });
+
 
 const PORT = 5001;
 app.listen(PORT, () => {
