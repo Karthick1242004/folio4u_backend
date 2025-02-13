@@ -4,6 +4,7 @@ const axios = require("axios");
 const app = express();
 const bodyParser = require("body-parser");
 const whois = require('whois');
+const mongoose = require('mongoose');
 
 require("dotenv").config();
 
@@ -21,12 +22,40 @@ const REPO_OWNER = process.env.REPO_OWNER;
 const BASE_REPO_NAME = process.env.BASE_REPO_NAME;
 const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
-
-// Add these headers near the top with other constants
 const headers = {
     Authorization: `Bearer ${GITHUB_TOKEN}`,
     Accept: "application/vnd.github.v3+json",
 };
+
+// MongoDB Connection
+mongoose.connect('mongodb+srv://karthick1242004:9894783774@karthick124.8ruyxjc.mongodb.net/folio', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
+// Create MongoDB Schema
+const hostedSiteSchema = new mongoose.Schema({
+    userId: String,
+    userEmail: String,
+    userName: String,
+    hostedSites: [{
+        siteName: String,
+        subdomain: String,
+        gistUrl: String,
+        createdAt: { type: Date, default: Date.now }
+    }]
+});
+
+const HostedSite = mongoose.model('hosted', hostedSiteSchema);
+
+// Create MongoDB Schema for Likes
+const likeSchema = new mongoose.Schema({
+    siteName: String,
+    likeCount: { type: Number, default: 0 },
+    likedBy: [String]  // Array of userIds who liked the site
+});
+
+const Like = mongoose.model('like', likeSchema);
 
 // API to create a new Gist
 app.post("/create-gist", async (req, res) => {
@@ -158,12 +187,162 @@ app.get('/check-domain/:subdomain', async (req, res) => {
 
 app.get("/get-subdomain", (req, res) => {
   if (!storedSubdomain) {
-      return res.status(404).json({ message: "N subdomain stored" });
+      return res.status(404).json({ message: "No subdomain stored" });
   }
 
   res.status(200).json({ subdomain: storedSubdomain });
 });
 
+// New API to store hosted site information
+app.post("/store-hosted-site", async (req, res) => {
+    const { userId, userEmail, userName, subdomain, gistUrl, siteName } = req.body;
+
+    if (!userId || !userEmail || !subdomain || !gistUrl || !siteName) {
+        return res.status(400).json({ 
+            message: "User ID, email, subdomain, site name, and gist URL are required" 
+        });
+    }
+
+    try {
+        let userRecord = await HostedSite.findOne({ userId: userId });
+
+        if (!userRecord) {
+            userRecord = new HostedSite({
+                userId,
+                userEmail,
+                userName,
+                hostedSites: []
+            });
+        }
+
+        // Add new hosted site to user's array with siteName
+        userRecord.hostedSites.push({
+            siteName,
+            subdomain,
+            gistUrl
+        });
+
+        await userRecord.save();
+
+        res.status(200).json({ 
+            message: "Hosted site information stored successfully",
+            data: userRecord
+        });
+    } catch (error) {
+        console.error("MongoDB error:", error);
+        res.status(500).json({ 
+            message: "Failed to store hosted site information", 
+            error: error.message 
+        });
+    }
+});
+
+// API to get user's hosted sites
+app.get("/get-user-sites/:userId", async (req, res) => {
+    try {
+        const userRecord = await HostedSite.findOne({ userId: req.params.userId });
+        
+        if (!userRecord) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ 
+            sites: userRecord.hostedSites,
+            userData: {
+                email: userRecord.userEmail,
+                name: userRecord.userName
+            }
+        });
+    } catch (error) {
+        console.error("MongoDB error:", error);
+        res.status(500).json({ 
+            message: "Failed to fetch user's hosted sites", 
+            error: error.message 
+        });
+    }
+});
+
+// API to handle like/unlike
+app.post("/toggle-like", async (req, res) => {
+    const { siteName, userId } = req.body;
+
+    if (!siteName || !userId) {
+        return res.status(400).json({ 
+            message: "Site name and user ID are required" 
+        });
+    }
+
+    try {
+        // Normalize the site name to prevent duplicates
+        const normalizedSiteName = siteName.trim();
+        
+        let likeRecord = await Like.findOne({ siteName: normalizedSiteName });
+
+        // If no record exists for this site, create one
+        if (!likeRecord) {
+            likeRecord = new Like({
+                siteName: normalizedSiteName,
+                likeCount: 0,
+                likedBy: []
+            });
+        }
+
+        // Check if user already liked the site
+        const userLikedIndex = likeRecord.likedBy.indexOf(userId);
+        
+        if (userLikedIndex === -1) {
+            // User hasn't liked the site yet - add like
+            likeRecord.likedBy.push(userId);
+            likeRecord.likeCount += 1;
+        } else {
+            // User already liked - remove like
+            likeRecord.likedBy.splice(userLikedIndex, 1);
+            likeRecord.likeCount -= 1;
+        }
+
+        await likeRecord.save();
+
+        res.status(200).json({ 
+            message: "Like updated successfully",
+            likeCount: likeRecord.likeCount,
+            isLiked: userLikedIndex === -1  // Returns true if this was a like action, false if unlike
+        });
+    } catch (error) {
+        console.error("MongoDB error:", error);
+        res.status(500).json({ 
+            message: "Failed to update like", 
+            error: error.message 
+        });
+    }
+});
+
+// API to get like count and status for a site
+app.get("/get-likes/:siteName", async (req, res) => {
+    try {
+        const siteName = decodeURIComponent(req.params.siteName).trim();
+        const { userId } = req.query;
+
+        const likeRecord = await Like.findOne({ siteName: siteName });
+        
+        if (!likeRecord) {
+            return res.status(200).json({ 
+                likeCount: 0, 
+                isLiked: false 
+            });
+        }
+
+        res.status(200).json({ 
+            likeCount: likeRecord.likeCount,
+            isLiked: userId ? likeRecord.likedBy.includes(userId) : false
+        });
+    } catch (error) {
+        console.error("MongoDB error:", error);
+        res.status(500).json({ 
+            message: "Failed to fetch like count", 
+            error: error.message 
+        });
+    }
+});
 
 const PORT = 5001;
 app.listen(PORT, () => {
