@@ -28,7 +28,7 @@ const headers = {
 };
 
 // MongoDB Connection
-mongoose.connect('mongodb+srv://karthick1242004:9894783774@karthick124.8ruyxjc.mongodb.net/folio', {
+mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });
