@@ -58,8 +58,44 @@ const likeSchema = new mongoose.Schema({
 const Like = mongoose.model('like', likeSchema);
 
 // API to create a new Gist
+// app.post("/create-gist", async (req, res) => {
+//     const { content } = req.body;
+
+//     try {
+//         const response = await axios.post(
+//             "https://api.github.com/gists",
+//             {
+//                 files: {
+//                     "data.json": {
+//                         content,
+//                     },
+//                 },
+//                 public: true,
+//             },
+//             {
+//                 headers: {
+//                     Authorization: `token ${GITHUB_TOKEN}`,
+//                 },
+//             }
+//         );
+
+//         const gistId = response.data.id;
+//         const gistRawUrl = `https://gist.githubusercontent.com/${REPO_OWNER}/${gistId}/raw/data.json`;
+
+//         res.status(201).json({ gistId, gistRawUrl });
+//     } catch (error) {
+//         console.error("GitHub API error:", error.response?.data || error.message);
+//         res.status(500).json({ message: "Failed to create gist", error: error.message });
+//     }
+// });
+
+
 app.post("/create-gist", async (req, res) => {
-    const { content } = req.body;
+    const { content, userToken } = req.body;
+
+    if (!userToken) {
+        return res.status(401).json({ message: "Unauthorized: Missing GitHub token" });
+    }
 
     try {
         const response = await axios.post(
@@ -74,13 +110,14 @@ app.post("/create-gist", async (req, res) => {
             },
             {
                 headers: {
-                    Authorization: `token ${GITHUB_TOKEN}`,
+                    Authorization: `Bearer ${userToken}`,
+                    Accept: "application/vnd.github.v3+json",
                 },
             }
         );
 
         const gistId = response.data.id;
-        const gistRawUrl = `https://gist.githubusercontent.com/${REPO_OWNER}/${gistId}/raw/data.json`;
+        const gistRawUrl = response.data.files["data.json"].raw_url;
 
         res.status(201).json({ gistId, gistRawUrl });
     } catch (error) {
@@ -88,6 +125,8 @@ app.post("/create-gist", async (req, res) => {
         res.status(500).json({ message: "Failed to create gist", error: error.message });
     }
 });
+
+
 
 // API to update Gist URL in the repository
 let storedSubdomain = ""; // Global variable for the subdomain
