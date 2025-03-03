@@ -47,8 +47,6 @@ const hostedSiteSchema = new mongoose.Schema({
 });
 
 const HostedSite = mongoose.model('hosted', hostedSiteSchema);
-
-// Create MongoDB Schema for Likes
 const likeSchema = new mongoose.Schema({
     siteName: String,
     likeCount: { type: Number, default: 0 },
@@ -56,40 +54,6 @@ const likeSchema = new mongoose.Schema({
 });
 
 const Like = mongoose.model('like', likeSchema);
-
-// API to create a new Gist
-// app.post("/create-gist", async (req, res) => {
-//     const { content } = req.body;
-
-//     try {
-//         const response = await axios.post(
-//             "https://api.github.com/gists",
-//             {
-//                 files: {
-//                     "data.json": {
-//                         content,
-//                     },
-//                 },
-//                 public: true,
-//             },
-//             {
-//                 headers: {
-//                     Authorization: `token ${GITHUB_TOKEN}`,
-//                 },
-//             }
-//         );
-
-//         const gistId = response.data.id;
-//         const gistRawUrl = `https://gist.githubusercontent.com/${REPO_OWNER}/${gistId}/raw/data.json`;
-
-//         res.status(201).json({ gistId, gistRawUrl });
-//     } catch (error) {
-//         console.error("GitHub API error:", error.response?.data || error.message);
-//         res.status(500).json({ message: "Failed to create gist", error: error.message });
-//     }
-// });
-
-
 app.post("/create-gist", async (req, res) => {
     const { content, userToken } = req.body;
 
@@ -128,7 +92,7 @@ app.post("/create-gist", async (req, res) => {
 
 
 
-// API to update Gist URL in the repository
+
 let storedSubdomain = ""; // Global variable for the subdomain
 
 app.post("/update-gist-url", async (req, res) => {
@@ -189,25 +153,6 @@ app.post("/update-gist-url", async (req, res) => {
 
 
 let latestDeployedUrl = ""; // Variable to store the deployed URL
-
-// // API to capture the latest deployed URL
-// app.post("/capture-deployed-url", (req, res) => {
-//   const { deployedUrl } = req.body;
-
-//   if (!deployedUrl) {
-//     return res.status(400).json({ message: "Deployed URL is required" });
-//   }
-//   latestDeployedUrl = deployedUrl;
-//   res.status(200).json({ message: "Deployed URL captured successfully" });
-// });
-// API to get the latest deployed URL
-// app.get("/get-deployed-url", (req, res) => {
-//   if (!latestDeployedUrl) {
-//     return res.status(404).json({ message: "No deployed URL available" });
-//   }
-//   res.status(200).json({ deployedUrl: latestDeployedUrl });
-// });
-
 app.get('/check-domain/:subdomain', async (req, res) => {
     const { subdomain } = req.params;
     const domain = `https://${subdomain}.netlify.app`;
